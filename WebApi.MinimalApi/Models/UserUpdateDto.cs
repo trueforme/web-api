@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace WebApi.MinimalApi.Models;
 
-public class UserPutDto
+public class UserUpdateDto
 {
     [Required]
     public string FirstName { get; set; }

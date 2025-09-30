@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using WebApi.MinimalApi.Domain;
@@ -90,7 +91,7 @@ public class UsersController : Controller
 
     [HttpPut("{userId}")]
     [Produces("application/json", "application/xml")]
-    public IActionResult UpsertUser(Guid userId, [FromBody] UserPutDto user)
+    public IActionResult UpsertUser(Guid userId, [FromBody] UserUpdateDto user)
     {
         if (userId == Guid.Empty || user is null)
             return BadRequest();
@@ -123,5 +124,21 @@ public class UsersController : Controller
     {
         Response.Headers.Add("Allow", "POST, GET, OPTIONS");
         return Ok();
+    }
+
+    [HttpPatch("{userId}")]
+    [Produces("application/json", "application/xml")]
+    public IActionResult PartiallyUpdateUser(Guid userId, [FromBody] JsonPatchDocument<UserUpdateDto> patchDoc)
+    {
+        if (patchDoc is null) return BadRequest();
+        var user = _userRepository.FindById(userId);
+        if (user is null) return NotFound();
+        var updateDto = _mapper.Map<UserUpdateDto>(user);
+        patchDoc.ApplyTo(updateDto, ModelState);
+        if (!TryValidateModel(updateDto))
+            return UnprocessableEntity(ModelState);
+        user = _mapper.Map(updateDto, user);
+        _userRepository.UpdateOrInsert(user, out var inserted);
+        return NoContent();
     }
 }
