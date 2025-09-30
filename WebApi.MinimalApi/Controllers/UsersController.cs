@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using WebApi.MinimalApi.Domain;
 using WebApi.MinimalApi.Models;
 
@@ -30,6 +31,39 @@ public class UsersController : Controller
         if (!HttpMethods.IsHead(Request.Method)) return Ok(userDto);
         Response.Headers.ContentType = "application/json; charset=utf-8";
         return Ok();
+    }
+
+    [HttpGet("", Name = nameof(GetUsers))]
+    [Produces("application/json", "application/xml")]
+    public IActionResult GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+    {
+        pageNumber = Math.Max(1, pageNumber);
+        pageSize = Math.Max(1, pageSize);
+        pageSize = Math.Min(20, pageSize);
+        var users = _userRepository.GetPage(pageNumber, pageSize);
+        var paginationHeader = new
+        {
+            previousPageLink = users.HasPrevious
+                ? Url.Link(nameof(GetUsers), new
+                {
+                    pageNumber = pageNumber - 1,
+                    pageSize = pageSize
+                })
+                : null,
+            nextPageLink = users.HasNext
+                ? Url.Link(nameof(GetUsers), new
+                {
+                    pageNumber = pageNumber + 1,
+                    pageSize = pageSize
+                })
+                : null,
+            totalCount = users.TotalCount,
+            pageSize = pageSize,
+            currentPage = users.CurrentPage,
+            totalPages = users.TotalPages,
+        };
+        Response.Headers.Add("X-Pagination", JsonConvert.SerializeObject(paginationHeader));
+        return Ok(users);
     }
 
     [HttpPost]
@@ -82,7 +116,7 @@ public class UsersController : Controller
         _userRepository.Delete(userId);
         return NoContent();
     }
-    
+
 
     [HttpOptions("")]
     public IActionResult Options()
