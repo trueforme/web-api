@@ -82,4 +82,12 @@ public class UsersController : Controller
         _userRepository.Delete(userId);
         return NoContent();
     }
+    
+
+    [HttpOptions("")]
+    public IActionResult Options()
+    {
+        Response.Headers.Add("Allow", "POST, GET, OPTIONS");
+        return Ok();
+    }
 }
