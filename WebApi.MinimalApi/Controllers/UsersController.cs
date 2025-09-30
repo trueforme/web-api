@@ -39,15 +39,35 @@ public class UsersController : Controller
             return UnprocessableEntity(ModelState);
         if (!user.Login.All(char.IsLetterOrDigit))
         {
-            ModelState.AddModelError("Login", "логин должен состоять только из цифр и букв");
+            ModelState.AddModelError("Login", "Login should contain only letters or digits");
             return UnprocessableEntity(ModelState);
         }
 
         var userEntity = _mapper.Map<UserEntity>(user);
-        _userRepository.Insert(userEntity);
+        userEntity = _userRepository.Insert(userEntity);
         var guid = userEntity.Id;
         return CreatedAtRoute(
             nameof(GetUserById),
             new { userId = guid }, guid);
+    }
+
+    [HttpPut("{userId}")]
+    [Produces("application/json", "application/xml")]
+    public IActionResult UpsertUser(Guid userId, [FromBody] UserPutDto user)
+    {
+        if (userId == Guid.Empty || user is null)
+            return BadRequest();
+        if (!ModelState.IsValid)
+            return UnprocessableEntity(ModelState);
+        var userEntity = _userRepository.FindById(userId);
+        userEntity ??= new UserEntity(userId);
+        userEntity = _mapper.Map(user, userEntity);
+        _userRepository.UpdateOrInsert(userEntity, out var isInserted);
+        if (isInserted)
+            return CreatedAtRoute(
+                nameof(GetUserById),
+                new { userId }, new { guid = userId });
+
+        return NoContent();
     }
 }
